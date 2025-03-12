@@ -145,7 +145,7 @@ A preview of the trimmed forward read Pd8838_1_p.html file is shown below. The f
 
 As we can see from using Trimmomatic, we have fixed the issue with adaptor contamination at the cost of sequence length distribution. But this dataset should be sufficient for genome assembly.
 
-### **Genome Assembly Using Velvet**
+### **Genome Assembly**
 
 After preprocessing the reads with Trimmomatic, the next step is to perform de novo genome assembly using Velvet. Velvet is a widely used tool for short read genome assembly, especially for next-generation sequencing (NGS) data. It uses a de Bruijn graph approach to assemble the reads into longer contigs.
 
