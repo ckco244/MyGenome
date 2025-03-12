@@ -203,7 +203,7 @@ Edit
 #SBATCH --partition=normal
 #SBATCH --mem=180GB
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=farman@uky.edu,ckco244@uky.edu
+#SBATCH --mail-user=user@domain.com
 
 echo "SLURM_NODELIST: "$SLURM_NODELIST
 
