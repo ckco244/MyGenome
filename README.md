@@ -70,7 +70,53 @@ sudo bash vm_soft_setup.sh
 
 ## Usage
 ### Downloading Sequence Data
+Sequence data is provided in fastq file formats from various sources. Sequence data used in this project was sourced from Dr. Mark Farman. We will used the scp protocol to download sequence data to our VM instance.
+```
+# Copies Po4 folder from Farman VM to personal VM containing my assigned genome sequences
+scp -r ngs@10.163.183.71:Desktop/Po4 MyGenome
+```
+
+The imported files had difficult names to read so they were renamed as Pd8838_1.fq.gz and Pd8838_2.fq.gz respectively using the mv command
+```
+mv 'difficult to read filename.fq.gz' Pd8838_1.fq.gz
+mv 'difficult to read filename 2.fq.gz' Pd8838_2.fq.gz
+```
+The files were then unzipped using gunzip
+
+```
+#Unzipping files
+gunzip Pd8838_1.fq.gz
+gunzip Pd8838_1.fq.gz
+
+#Deleting zipped files
+rm Pd8838_1.fq.gz
+rm Pd8838_2.fq.gz
+```
+the mygenome directory now contains two uncompressed fastq files of the sequencing reads.
+
+Pd8838_1.fq and Pd8838_2.fq
+
+These will be the two files used for quality analysis and assembly.
+
 ### Quality Analysis
+Before genome assembly can take place it is important to understand the quality of data we are working with. There are many different programs to do this but we will be using fastqc for this project.
+
+```
+#Running Fastqc with two input files
+fastqc Pd8838_1.fq Pd8838_2.fq
+```
+
+This command runs and returns .html files with the results for each file.
+These .html files were transferred to a local machine for viewing using the scp protocol. 
+
+```
+#Transferring .html files for viewing
+scp -r ckco244@ckco244.cs.uky.edu:/MyGenome/Po4/Pd8838_1_fastqc.html "C:/downloads"
+scp -r ckco244@ckco244.cs.uky.edu:/MyGenome/Po4/Pd8838_2_fastqc.html "C:/downloads"
+```
+The resulting .html files are shown below.
+
+
 ### Trimming
 ### Genome Assembly
 ### Uploading Data
