@@ -10,6 +10,8 @@
   - [Quality Analysis](#quality-analysis)
   - [Trimming](#trimming)
   - [Genome Assembly](#genome-assembly)
+  - [Genome Completeness Using BUSCO](#busco)
+  - [Gene Prediction](#Gene-Prediction-and-Annotation-Pipeline-using-SNAP,-AUGUSTUS,-and-MAKER)
   - [Uploading Data](#uploading-data)
 - [Contributing](#contributing)
 - [License](#license)
@@ -284,12 +286,243 @@ sbatch velvetoptimiser_noclean.sh Pd8838 95 105 2
 ```
 This narrowed search focuses on k-mer values around 100, which was found to be optimal in the previous run. The result of this second run returned the final optimal k-mer value of 99. This is the kmer value that will be used for final assembly.
 
+## BUSCO
 
+**BUSCO** (*Benchmarking Using Single-Copy Orthologs*) is a tool for assessing genome completeness. It works by searching for a set of highly conserved, single-copy orthologous genes using `tblastn`. These genes are expected to be present in all genomes of a given lineage and provide a metric for genome assembly quality.
 
+BUSCO includes databases for a wide range of lineages:
 
+- Animals
+- Plants
+- Fungi
+- Others
 
+These databases can be further refined to more specific groups (e.g., phylum, class).  
+For this analysis, we will use the **odb10_ascomycota** database, specific to the fungal phylum *Ascomycota*.
 
+### Instructions for Running BUSCO
 
+### 1. Log into the MCC Supercomputer
+
+Use your preferred SSH client to connect to the MCC supercomputer.
+
+### 2. Navigate to Your Working Directory
+
+```
+bash
+cd /project/farman_s25abt480/yourUserName
+```
+
+copy the BuscoSingularity.sh script into this working directory and edit using nano to include your email address.
+
+Run the script as follows
+
+```
+sbatch /project/farman_s24cs485g/SLURM_SCRIPTS/BuscoSingularity.sh path/to/MyGenome.fasta
+```
+**note: this run will take quite a while to complete**
+
+Once BUSCO finished there will be a logfile output that will show the results from your run.
+
+# Gene Prediction and Annotation Pipeline using SNAP, AUGUSTUS, and MAKER
+
+## Overview
+
+This guide walks through the process of gene prediction using SNAP and AUGUSTUS, followed by integration with MAKER. The workflow includes:
+
+1. Preparing a training set  
+2. Training SNAP  
+3. Running SNAP on a target genome  
+4. Running AUGUSTUS with pre-trained parameters  
+5. Combining results with MAKER  
+
+---
+
+## 1. Preparing Environment
+
+Start a `screen` session for persistent environment:
+
+```bash
+screen -S genes bash -l
+```
+
+Check where SNAP is installed:
+
+```bash
+echo $ZOE
+ls $ZOE
+ls $ZOE/HMM
+less $ZOE/HMM/C.elegans.hmm
+```
+
+---
+
+## 2. Training SNAP
+
+### 2.1 Preparing Input Data
+
+Create a working directory:
+
+```bash
+mkdir -p ~/genes/snap
+cd ~/genes/snap
+```
+
+Download the genome and annotation files (from local desktop):
+
+```bash
+cp /path/to/B71Ref2.fasta .
+cp /path/to/B71Ref2_a0.3.gff3 .
+```
+
+Preview the annotation:
+
+```bash
+head B71Ref2_a0.3.gff3
+```
+
+Combine GFF3 and FASTA:
+
+```bash
+echo '##FASTA' | cat B71Ref2_a0.3.gff3 - B71Ref2.fasta > B71Ref2.gff3
+```
+
+Check the merged file:
+
+```bash
+grep '##FASTA' -B 5 -A 5 B71Ref2.gff3
+```
+
+### 2.2 Convert to ZFF format
+
+```bash
+maker2zff B71Ref2.gff3
+```
+
+### 2.3 Analyze and Extract Training Data
+
+```bash
+fathom genome.ann genome.dna -gene-stats
+fathom genome.ann genome.dna -categorize 1000
+fathom uni.ann uni.dna -gene-stats
+fathom uni.ann uni.dna -export 1000 -plus
+fathom export.ann export.dna -gene-stats
+```
+
+### 2.4 Train SNAP HMM
+
+```bash
+forge export.ann export.dna
+hmm-assembler.pl Moryzae . > Moryzae.hmm
+less Moryzae.hmm
+```
+
+---
+
+## 3. Running SNAP on MyGenome
+
+Copy your genome to working directory:
+
+```bash
+cp /path/to/MyGenome.fasta .
+```
+
+Run SNAP:
+
+```bash
+snap-hmm Moryzae.hmm MyGenome.fasta > MyGenome-snap.zff
+fathom MyGenome-snap.zff MyGenome.fasta -gene-stats
+snap-hmm Moryzae.hmm MyGenome.fasta -gff > MyGenome-snap.gff2
+```
+
+---
+
+## 4. Running AUGUSTUS
+
+### 4.1 Setup
+
+```bash
+cd ~/genes/augustus
+augustus --help 2>&1 | less
+augustus --species=help 2>&1 | less
+```
+
+Use `screen` if running remotely.
+
+### 4.2 Run AUGUSTUS
+
+```bash
+augustus --species=magnaporthe_grisea --gff3=on --singlestrand=true --progress=true ../snap/MyGenome.fasta > MyGenome-augustus.gff3
+```
+
+Examine results:
+
+```bash
+less MyGenome-augustus.gff3
+```
+
+Compare GFF2 (SNAP) vs GFF3 (AUGUSTUS) outputs.
+
+---
+
+## 5. Running MAKER
+
+### 5.1 Inputs
+
+Ensure you have the following:
+
+- `MyGenome.fasta`
+- SNAP HMM: `genes/snap/Moryzae.hmm`
+- Transcript evidence: `genes/maker/genbank/ncbi-cds-Magnaporthe_organism.fasta`
+- Protein evidence: `genes/maker/genbank/ncbi-protein-Magnaporthe_organism.fasta`
+
+### 5.2 Setup
+
+Navigate to the MAKER directory:
+
+```bash
+cd ~/genes/maker
+```
+
+Generate default configuration files:
+
+```bash
+maker -CTL
+```
+
+Edit `maker_opts.ctl` to set the following:
+
+```text
+genome=MyGenome.fasta
+est=genbank/ncbi-cds-Magnaporthe_organism.fasta
+protein=genbank/ncbi-protein-Magnaporthe_organism.fasta
+snaphmm=../snap/Moryzae.hmm
+```
+
+Leave `augustus_species=` blank if using external GFF3 from AUGUSTUS.
+
+Run MAKER:
+
+```bash
+maker
+```
+
+**As MAKER executes, you can see the various programs that it runs: Exonerate, SNAP, and so on. This execution will take approximately 4 hours!**
+
+MAKER output will include:
+
+- `MyGenome-annotations.gff`
+- `*.maker.output/*` directories with individual scaffold results
+
+---
+
+## Resources
+
+- [SNAP GitHub](https://github.com/KorfLab/SNAP)
+- [AUGUSTUS Website](http://bioinf.uni-greifswald.de/augustus/)
+- [MAKER Documentation](http://www.yandell-lab.org/software/maker.html)
+
+---
 ### Uploading Data
 
 ## Contributing
