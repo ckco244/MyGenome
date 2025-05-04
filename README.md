@@ -523,11 +523,3 @@ MAKER output will include:
 - [MAKER Documentation](http://www.yandell-lab.org/software/maker.html)
 
 ---
-### Uploading Data
-
-## Contributing
-
-## License
-
-
-
